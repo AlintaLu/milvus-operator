@@ -123,11 +123,12 @@ func (r *MilvusReconciler) DeleteDeploymentsIfExists(ctx context.Context, mc v1b
 func (r *MilvusReconciler) ReconcileComponentDeployment(
 	ctx context.Context, mc v1beta1.Milvus, component MilvusComponent,
 ) error {
-
+	r.logger.Info("ReconcileComponentDeployment %s", component)
 	namespacedName := NamespacedName(mc.Namespace, component.GetDeploymentName(mc.Name))
 	old := &appsv1.Deployment{}
 	err := r.Get(ctx, namespacedName, old)
 	if kerrors.IsNotFound(err) {
+		r.logger.Info("deployment not found, creating new deployment", "name", component.GetDeploymentName(mc.Name), "namespace", mc.Namespace)
 		new := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      component.GetDeploymentName(mc.Name),
@@ -144,6 +145,7 @@ func (r *MilvusReconciler) ReconcileComponentDeployment(
 		return err
 	}
 
+	r.logger.Info("deployment found, handling old instance changing mode", "name", old.Name, "namespace", old.Namespace)
 	err = r.handleOldInstanceChangingMode(ctx, mc, component)
 	if err != nil {
 		return err
@@ -172,7 +174,7 @@ func (r *MilvusReconciler) handleOldInstanceChangingMode(ctx context.Context, mc
 	if !mc.IsPodServiceLabelAdded() &&
 		mc.IsChangingMode() &&
 		component == MilvusStandalone {
-
+		r.logger.Info("labeling service pods for %s/%s", mc.Namespace, mc.Name)
 		err := r.labelServicePods(ctx, mc)
 		if err != nil {
 			return pkgerr.Wrap(err, "label service pods")
@@ -219,6 +221,7 @@ func (r *MilvusReconciler) labelServicePods(ctx context.Context, mc v1beta1.Milv
 }
 
 func (r *MilvusReconciler) RemoveOldStandlone(ctx context.Context, mc v1beta1.Milvus) error {
+	r.logger.Info("remove old standalone deployment for %s/%s", mc.Namespace, mc.Name)
 	deployments := &appsv1.DeploymentList{}
 	opts := &client.ListOptions{
 		Namespace: mc.Namespace,
@@ -231,7 +234,9 @@ func (r *MilvusReconciler) RemoveOldStandlone(ctx context.Context, mc v1beta1.Mi
 		return err
 	}
 	if len(deployments.Items) > 0 {
+		r.logger.Info("found old standalone deployment for %s/%s", mc.Namespace, mc.Name)
 		for _, deploy := range deployments.Items {
+			r.logger.Info("deleting old standalone deployment %s/%s", deploy.Namespace, deploy.Name)
 			if err := r.Delete(ctx, &deploy); err != nil {
 				return err
 			}
@@ -241,17 +246,21 @@ func (r *MilvusReconciler) RemoveOldStandlone(ctx context.Context, mc v1beta1.Mi
 }
 
 func (r *MilvusReconciler) ReconcileDeployments(ctx context.Context, mc v1beta1.Milvus) error {
+	r.logger.Info("reconciling deployments for %s/%s", mc.Namespace, mc.Name)
 	err := r.RemoveOldStandlone(ctx, mc)
 	if err != nil {
 		return err
 	}
 	var errs = []error{}
 	for _, component := range GetComponentsBySpec(mc.Spec) {
+		r.logger.Info("reconciling component %s", component)
 		switch {
 		case component == QueryNode ||
 			mc.Spec.Com.RollingMode == v1beta1.RollingModeV3:
+			r.logger.Info("reconciling component %s for query node or v3", component)
 			err = r.deployCtrl.Reconcile(ctx, mc, component)
 		default:
+			r.logger.Info("reconciling component %s for other components", component)
 			err = r.ReconcileComponentDeployment(ctx, mc, component)
 		}
 		if err != nil {
