@@ -111,12 +111,30 @@ func (ms MilvusSpec) GetServiceComponent() *ServiceComponent {
 	return &ms.Com.Standalone.ServiceComponent
 }
 
-func IsVersionGreaterThan2_6(version string) bool {
-	semanticVersion, err := semver.ParseTolerant(version)
+func IsVersionGreaterThan2_6(version, image string) bool {
+	// use version field if set
+	if version != "" {
+		sematicVersion, err := semver.ParseTolerant(version)
+		if err != nil {
+			return false
+		}
+		return sematicVersion.GT(semanticVersion2_5_Max)
+	}
+
+	// use tag if version is not set, parse format: registry/namespace/image:tag
+	splited := strings.Split(image, ":")
+	if len(splited) != 2 {
+		return false
+	}
+	imageTag := splited[1]
+	if strings.HasPrefix(imageTag, "master-") {
+		return true
+	}
+	sematicVersion, err := semver.ParseTolerant(imageTag)
 	if err != nil {
 		return false
 	}
-	return semanticVersion.GT(semanticVersion2_5_Max)
+	return sematicVersion.GT(semanticVersion2_5_Max)
 }
 
 // GetMilvusVersionByImage returns the version of Milvus by ms.Com.ComponentSpec.Image
@@ -157,7 +175,7 @@ func (ms *MilvusSpec) UseMixCoord() bool {
 var semanticVersion2_5_Max = semver.MustParse("2.5.999")
 
 func (ms *MilvusSpec) UseStreamingNode() bool {
-	if IsVersionGreaterThan2_6(ms.Com.Version) {
+	if IsVersionGreaterThan2_6(ms.Com.Version, ms.Com.Image) {
 		return true
 	}
 	if ms.Com.StreamingMode != nil {

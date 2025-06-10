@@ -56,8 +56,7 @@ func TestMilvus_Default_NotExternal(t *testing.T) {
 		Com: MilvusComponents{
 			ImageUpdateMode: ImageUpdateModeRollingUpgrade,
 			ComponentSpec: ComponentSpec{
-				Image:   config.DefaultMilvusImage,
-				Version: config.DefaultMilvusSementicVersion,
+				Image: config.DefaultMilvusImage,
 			},
 			Standalone: &MilvusStandalone{
 				ServiceComponent: ServiceComponent{
@@ -107,8 +106,7 @@ func TestMilvus_Default_NotExternal(t *testing.T) {
 	clusterDefault.Com = MilvusComponents{
 		ImageUpdateMode: ImageUpdateModeRollingUpgrade,
 		ComponentSpec: ComponentSpec{
-			Image:   config.DefaultMilvusImage,
-			Version: config.DefaultMilvusSementicVersion,
+			Image: config.DefaultMilvusImage,
 		},
 		RollingMode: RollingModeV2,
 		Proxy: &MilvusProxy{
@@ -340,8 +338,9 @@ func Test_DefaultConf_EnableRollingUpdate(t *testing.T) {
 }
 
 func TestMilvus_validateCommon(t *testing.T) {
-	mc := Milvus{}
+
 	t.Run("rolling mode <2 or >3 not support", func(t *testing.T) {
+		mc := Milvus{}
 		mc.Spec.Com.RollingMode = RollingModeV1
 		err := mc.validateCommon()
 		assert.Error(t, err)
@@ -349,8 +348,10 @@ func TestMilvus_validateCommon(t *testing.T) {
 		err = mc.validateCommon()
 		assert.Error(t, err)
 	})
-	mc.Spec.Com.RollingMode = RollingModeV2
+
 	t.Run("validate rollingupdate", func(t *testing.T) {
+		mc := Milvus{}
+		mc.Spec.Com.RollingMode = RollingModeV2
 		mc.Spec.Com.EnableRollingUpdate = util.BoolPtr(true)
 		err := mc.validateCommon()
 		assert.NotNil(t, err)
@@ -361,6 +362,7 @@ func TestMilvus_validateCommon(t *testing.T) {
 	})
 
 	t.Run("validate version ok", func(t *testing.T) {
+		mc := Milvus{}
 		mc.Spec.Com.Version = config.DefaultMilvusSementicVersion
 		mc.Default()
 		err := mc.validateCommon()
@@ -368,6 +370,7 @@ func TestMilvus_validateCommon(t *testing.T) {
 	})
 
 	t.Run("validate version failed", func(t *testing.T) {
+		mc := Milvus{}
 		mc.Spec.Com.Version = "bad"
 		mc.Default()
 		err := mc.validateCommon()
@@ -375,13 +378,16 @@ func TestMilvus_validateCommon(t *testing.T) {
 	})
 
 	t.Run("validate persist default ok", func(t *testing.T) {
+		mc := Milvus{}
 		mc.Spec.Com.EnableRollingUpdate = util.BoolPtr(false)
 		mc.Spec.Dep.MsgStreamType = ""
+		mc.Spec.Com.Version = ""
 		mc.Default()
 		err := mc.validateCommon()
 		assert.Nil(t, err)
 	})
 	t.Run("validate persist failed", func(t *testing.T) {
+		mc := Milvus{}
 		mc.Spec.Dep.MsgStreamType = MsgStreamTypeRocksMQ
 		mc.Spec.Com.EnableRollingUpdate = util.BoolPtr(false)
 		mc.Spec.Dep.RocksMQ.Persistence.PersistentVolumeClaim.Spec.Data = map[string]interface{}{

@@ -264,16 +264,6 @@ func (r *Milvus) DefaultComponents() {
 	spec := &r.Spec
 	setDefaultStr(&spec.Com.Image, config.DefaultMilvusImage)
 
-	// Set version from image tag, version field or unknown version
-	if version, err := spec.GetMilvusVersionByImage(); err == nil {
-		spec.Com.Version = version.FinalizeVersion()
-	} else if spec.Com.Version != "" {
-		version, _ := spec.GetSemanticVersion()
-		spec.Com.Version = version.FinalizeVersion()
-	} else {
-		spec.Com.Version = config.UnknownMilvusSementicVersion
-	}
-
 	if spec.Com.ImageUpdateMode == "" {
 		spec.Com.ImageUpdateMode = ImageUpdateModeRollingUpgrade
 	}
@@ -309,7 +299,7 @@ func (r *Milvus) DefaultComponents() {
 		if spec.Com.DataNode == nil {
 			spec.Com.DataNode = &MilvusDataNode{}
 		}
-		if !IsVersionGreaterThan2_6(spec.Com.Version) && spec.Com.IndexNode == nil {
+		if !IsVersionGreaterThan2_6(spec.Com.Version, spec.Com.Image) && spec.Com.IndexNode == nil {
 			spec.Com.IndexNode = &MilvusIndexNode{}
 		}
 		if spec.Com.QueryNode == nil {
@@ -342,7 +332,7 @@ func (r *Milvus) defaultComponentsReplicas() {
 			}
 		}
 
-		if IsVersionGreaterThan2_6(spec.Com.Version) {
+		if IsVersionGreaterThan2_6(spec.Com.Version, spec.Com.Image) {
 			if spec.Com.MixCoord == nil {
 				spec.Com.MixCoord = &MilvusMixCoord{}
 			}
@@ -373,7 +363,7 @@ func (r *Milvus) defaultComponentsReplicas() {
 			spec.Com.DataNode.Replicas = &defaultReplicas
 		}
 
-		if !IsVersionGreaterThan2_6(spec.Com.Version) && spec.Com.IndexNode.Replicas == nil {
+		if !IsVersionGreaterThan2_6(spec.Com.Version, spec.Com.Image) && spec.Com.IndexNode.Replicas == nil {
 			spec.Com.IndexNode.Replicas = &defaultReplicas
 		}
 
@@ -479,7 +469,7 @@ func (r *Milvus) setDefaultMsgStreamType() {
 	if r.Spec.Dep.MsgStreamType == "" {
 		switch r.Spec.Mode {
 		case MilvusModeStandalone:
-			if IsVersionGreaterThan2_6(r.Spec.Com.Version) {
+			if IsVersionGreaterThan2_6(r.Spec.Com.Version, r.Spec.Com.Image) {
 				r.Spec.Dep.MsgStreamType = MsgStreamTypeWoodPecker
 			} else {
 				r.Spec.Dep.MsgStreamType = MsgStreamTypeRocksMQ

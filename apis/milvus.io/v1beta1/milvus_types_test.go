@@ -9,7 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/zilliztech/milvus-operator/pkg/config"
 	"github.com/zilliztech/milvus-operator/pkg/util"
 )
 
@@ -245,19 +244,19 @@ func TestGetActiveConfigMap_SetActiveConfigMap(t *testing.T) {
 	assert.Equal(t, mc.Name+"-1", mc.GetActiveConfigMap())
 }
 
-func TestMilvus_SetVersion(t *testing.T) {
+func TestMilvus_VersionGreaterThan2_6(t *testing.T) {
 
 	t.Run("default version", func(t *testing.T) {
 		mc := Milvus{}
 		mc.Default()
-		assert.Equal(t, config.DefaultMilvusSementicVersion, mc.Spec.Com.Version)
+		assert.Equal(t, false, IsVersionGreaterThan2_6(mc.Spec.Com.Version, mc.Spec.Com.Image))
 	})
 
 	t.Run("get version from image tag", func(t *testing.T) {
 		mc := Milvus{}
 		mc.Spec.Com.Image = "milvusdb/milvus:2.6.0-rc1"
 		mc.Default()
-		assert.Equal(t, "2.6.0", mc.Spec.Com.Version)
+		assert.Equal(t, true, IsVersionGreaterThan2_6(mc.Spec.Com.Version, mc.Spec.Com.Image))
 	})
 
 	t.Run("get version from version field", func(t *testing.T) {
@@ -265,21 +264,21 @@ func TestMilvus_SetVersion(t *testing.T) {
 		mc.Spec.Com.Image = "milvusdb/milvus:dev-xxx-xxx"
 		mc.Spec.Com.Version = "2.6.0"
 		mc.Default()
-		assert.Equal(t, "2.6.0", mc.Spec.Com.Version)
+		assert.Equal(t, true, IsVersionGreaterThan2_6(mc.Spec.Com.Version, mc.Spec.Com.Image))
 	})
 
 	t.Run("get version from unknown image", func(t *testing.T) {
 		mc := Milvus{}
 		mc.Spec.Com.Image = "milvusdb/milvus:unknown"
 		mc.Default()
-		assert.Equal(t, config.UnknownMilvusSementicVersion, mc.Spec.Com.Version)
+		assert.Equal(t, false, IsVersionGreaterThan2_6(mc.Spec.Com.Version, mc.Spec.Com.Image))
 	})
 
 	t.Run("get version from invalid image tag", func(t *testing.T) {
 		mc := Milvus{}
 		mc.Spec.Com.Image = "milvusdb/milvus:2.6-rc1"
 		mc.Default()
-		assert.Equal(t, config.UnknownMilvusSementicVersion, mc.Spec.Com.Version)
+		assert.Equal(t, false, IsVersionGreaterThan2_6(mc.Spec.Com.Version, mc.Spec.Com.Image))
 	})
 
 	t.Run("set invalid version", func(t *testing.T) {
@@ -291,6 +290,14 @@ func TestMilvus_SetVersion(t *testing.T) {
 }
 
 func TestMilvus_setDefaultMsgStreamType(t *testing.T) {
+
+	t.Run("standalone master use woodpecker", func(t *testing.T) {
+		mc := Milvus{}
+		mc.Spec.Mode = MilvusModeStandalone
+		mc.Spec.Com.Image = "milvusdb/milvus:master-20250609-123456"
+		mc.setDefaultMsgStreamType()
+		assert.Equal(t, MsgStreamTypeWoodPecker, mc.Spec.Dep.MsgStreamType)
+	})
 
 	t.Run("standalone with 2.6 image use wood pecker", func(t *testing.T) {
 		mc := Milvus{}
