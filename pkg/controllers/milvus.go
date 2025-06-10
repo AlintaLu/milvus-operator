@@ -30,7 +30,7 @@ func (r *MilvusReconciler) SetDefaultStatus(ctx context.Context, mc *v1beta1.Mil
 		mc.Status.CurrentVersion = mc.Spec.Com.Version
 		err := r.Client.Status().Update(ctx, mc)
 		return errors.Wrapf(err, "set mc default status[%s/%s] failed", mc.Namespace, mc.Name)
-	} else if mc.Status.CurrentImage == "" || mc.Status.CurrentVersion == "" { // update current image and version if not set
+	} else if mc.Status.CurrentImage == "" { // update current image and version if not set
 		mc.Status.CurrentImage = mc.Spec.Com.Image
 		mc.Status.CurrentVersion = mc.Spec.Com.Version
 		err := r.Client.Status().Update(ctx, mc)
