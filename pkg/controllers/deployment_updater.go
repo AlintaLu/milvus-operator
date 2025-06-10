@@ -522,12 +522,20 @@ func (m milvusDeploymentUpdater) RollingUpdateImageDependencyReady() bool {
 	isUpgradingTo2_6 := !v1beta1.IsVersionGreaterThan2_6(milvus.Spec.Com.Version, milvus.Spec.Com.Image) &&
 		v1beta1.IsVersionGreaterThan2_6(milvus.Status.CurrentVersion, milvus.Status.CurrentImage)
 
+	podTemplateLogger.Info("current version", "version", milvus.Spec.Com.Version)
+	podTemplateLogger.Info("current image", "image", milvus.Spec.Com.Image)
+	podTemplateLogger.Info("status current version", "version", milvus.Status.CurrentVersion)
+	podTemplateLogger.Info("status current image", "image", milvus.Status.CurrentImage)
+	podTemplateLogger.Info("isUpgradingTo2_6", "isUpgradingTo2_6", isUpgradingTo2_6)
+
 	var deps []MilvusComponent
 	if isUpgradingTo2_6 {
 		// Use special dependency graph for 2.6 upgrade
+		podTemplateLogger.Info("using 2.5 -> 2.6 dependency graph")
 		deps = upgrade26ClusterDependencyGraph.GetDependencies(m.component)
 	} else {
 		// Use normal dependency graph
+		podTemplateLogger.Info("using normal dependency graph")
 		deps = m.component.GetDependencies(m.Spec)
 	}
 
