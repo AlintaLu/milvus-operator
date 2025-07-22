@@ -296,6 +296,11 @@ func (r *MilvusReconciler) ReconcileDeployments(ctx context.Context, mc v1beta1.
 		return err
 	}
 
+	err = r.cleanupCoordinatorsIfNeeded(ctx, mc)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -318,6 +323,30 @@ func (r *MilvusReconciler) cleanupIndexNodeIfNeeded(ctx context.Context, mc v1be
 
 		r.logger.Info("Successfully cleanup index node", "namespace", mc.Namespace, "name", mc.Name)
 	}
+	return nil
+}
+
+func (r *MilvusReconciler) cleanupCoordinatorsIfNeeded(ctx context.Context, mc v1beta1.Milvus) error {
+
+	// offline coords if spec.mixcoord is not nil, and update cr
+	if mc.Spec.UseMixCoord() && MixCoord.IsImageUpdated(&mc) && HasCoordsSpec(&mc) {
+		r.logger.Info("Offline non mixcoord coordinators", "namespace", mc.Namespace, "name", mc.Name)
+
+		for _, coord := range MilvusCoords {
+			err := r.DeleteDeploymentsIfExists(ctx, mc, coord)
+			if err != nil {
+				return err
+			}
+		}
+
+		SetCoordsNil(&mc)
+		err := r.Update(ctx, &mc)
+		if err != nil {
+			return err
+		}
+		r.logger.Info("Successfully cleanup non mixcoord coordinators", "namespace", mc.Namespace, "name", mc.Name)
+	}
+
 	return nil
 }
 
