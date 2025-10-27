@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -525,20 +524,15 @@ func GetMilvusUpdatedCondition(m *v1beta1.Milvus) v1beta1.MilvusCondition {
 	var updatingComponent []string
 	var isUpdatingImage bool
 	for _, component := range components {
-		log.Println("iterating components", component.Name)
 		componentStatus := status[component.Name]
 		deployState := componentStatus.GetState()
-		log.Println("deployState", deployState)
 		if deployState != v1beta1.DeploymentComplete && deployState != v1beta1.DeploymentPaused {
-			log.Println("adding component to updatingComponent because of its deployState", component.Name)
 			updatingComponent = append(updatingComponent, component.Name)
 		} else if v1beta1.Labels().IsComponentRolling(*m, component.Name) {
-			log.Println("adding component to updatingComponent because of its rolling label", component.Name)
 			updatingComponent = append(updatingComponent, component.Name)
 		}
 		if m.IsRollingUpdateEnabled() &&
 			componentStatus.Image != m.Spec.Com.Image {
-			log.Println("adding component to updatingComponent because of its image", component.Name)
 			isUpdatingImage = true
 		}
 	}

@@ -19628,7 +19628,7 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: 'milvusdb/milvus-operator:v1.3.2'
+        image: 'harbor.milvus.io/devops/milvus-operator:cdc-20251027-28cb4cd'
         imagePullPolicy: "IfNotPresent"
         livenessProbe:
           httpGet:
@@ -19652,8 +19652,8 @@ spec:
           periodSeconds: 10
         resources:
           limits:
-            cpu: 1000m
-            memory: 1Gi
+            cpu: 2
+            memory: 2Gi
           requests:
             cpu: 100m
             memory: 100Mi

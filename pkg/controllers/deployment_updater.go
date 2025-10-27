@@ -524,7 +524,12 @@ func (m milvusDeploymentUpdater) RollingUpdateImageDependencyReady() bool {
 		return false
 	}
 
-	// update cdc image first
+	// Cdc image is updated first
+	if m.component.Name == CdcName {
+		return true
+	}
+
+	// Check if cdc image is updated for component other than cdc
 	if m.Spec.UseCdc() && !Cdc.IsImageUpdated(m.GetMilvus()) {
 		return false
 	}
