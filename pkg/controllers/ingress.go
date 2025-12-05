@@ -3,12 +3,12 @@ package controllers
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	networkingv1 "k8s.io/api/networking/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/zilliztech/milvus-operator/apis/milvus.io/v1beta1"
@@ -19,11 +19,13 @@ func (r *MilvusReconciler) ReconcileIngress(ctx context.Context, mc v1beta1.Milv
 	if ingress == nil {
 		return nil
 	}
-	return reconcileIngress(ctx, r.logger, r.Client, r.Scheme, &mc, *ingress)
+	return reconcileIngress(ctx, r.Client, r.Scheme, &mc, *ingress)
 }
 
-func reconcileIngress(ctx context.Context, logger logr.Logger,
+func reconcileIngress(ctx context.Context,
 	cli client.Client, scheme *runtime.Scheme, crd client.Object, ingress v1beta1.MilvusIngress) error {
+
+	logger := ctrl.LoggerFrom(ctx)
 
 	new := ingressRenderer.Render(crd, ingress)
 

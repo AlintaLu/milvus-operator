@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -26,7 +27,7 @@ func (r *MilvusReconciler) getMinioAccessInfo(ctx context.Context, mc v1beta1.Mi
 	key := types.NamespacedName{Namespace: mc.Namespace, Name: mc.Spec.Dep.Storage.SecretRef}
 	if err := r.Get(ctx, key, secret); err != nil {
 		// TODO @shaoyue: handle error, or not get if no secret set
-		r.logger.Error(err, "get minio secret error")
+		ctrl.LoggerFrom(ctx).Error(err, "get minio secret error")
 		return "", ""
 	}
 
@@ -41,8 +42,9 @@ func (r *MilvusReconciler) updateConfigMap(ctx context.Context, mc v1beta1.Milvu
 	}
 
 	conf := map[string]interface{}{}
+	logger := ctrl.LoggerFrom(ctx)
 	if err := yaml.Unmarshal(confYaml, &conf); err != nil {
-		r.logger.Error(err, "yaml Unmarshal conf error")
+		logger.Error(err, "yaml Unmarshal conf error")
 		return err
 	}
 
@@ -92,7 +94,7 @@ func (r *MilvusReconciler) updateConfigMap(ctx context.Context, mc v1beta1.Milvu
 
 	milvusYaml, err := yaml.Marshal(conf)
 	if err != nil {
-		r.logger.Error(err, "yaml Marshal conf error")
+		logger.Error(err, "yaml Marshal conf error")
 		return err
 	}
 
@@ -110,7 +112,7 @@ func (r *MilvusReconciler) updateConfigMap(ctx context.Context, mc v1beta1.Milvu
 	if len(mc.Spec.HookConf.Data) > 0 {
 		hookYaml, err := yaml.Marshal(mc.Spec.HookConf.Data)
 		if err != nil {
-			r.logger.Error(err, "yaml Unmarshal hook conf error")
+			logger.Error(err, "yaml Unmarshal hook conf error")
 			return err
 		}
 		configmap.Data[HookYaml] = string(hookYaml)
@@ -156,6 +158,7 @@ func (r *MilvusReconciler) ReconcileConfigMaps(ctx context.Context, mc v1beta1.M
 var reconcileOneConfigMap = func(r *MilvusReconciler, ctx context.Context, mc v1beta1.Milvus, namespacedName types.NamespacedName) error {
 	old := &corev1.ConfigMap{}
 	err := r.Get(ctx, namespacedName, old)
+	logger := ctrl.LoggerFrom(ctx)
 	if kerrors.IsNotFound(err) {
 		new := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -167,7 +170,7 @@ var reconcileOneConfigMap = func(r *MilvusReconciler, ctx context.Context, mc v1
 			return err
 		}
 
-		r.logger.Info("Create Configmap", "name", new.Name, "namespace", new.Namespace)
+		logger.Info("Create Configmap")
 		return r.Create(ctx, new)
 	} else if err != nil {
 		return err
@@ -182,6 +185,6 @@ var reconcileOneConfigMap = func(r *MilvusReconciler, ctx context.Context, mc v1
 		return nil
 	}
 
-	r.logger.Info("Update Configmap", "name", cur.Name, "namespace", cur.Namespace)
+	logger.Info("Update Configmap")
 	return r.Update(ctx, cur)
 }

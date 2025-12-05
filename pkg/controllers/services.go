@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pkgerr "github.com/pkg/errors"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -61,6 +62,8 @@ func (r *MilvusReconciler) ReconcileComponentService(
 	namespacedName := NamespacedName(mc.Namespace, GetServiceInstanceName(mc.Name))
 	old := &corev1.Service{}
 	err := r.Get(ctx, namespacedName, old)
+
+	logger := ctrl.LoggerFrom(ctx)
 	if errors.IsNotFound(err) {
 		new := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
@@ -72,7 +75,7 @@ func (r *MilvusReconciler) ReconcileComponentService(
 			return err
 		}
 
-		r.logger.Info("Create Service", "name", new.Name, "namespace", new.Namespace)
+		logger.Info("Create Service")
 		return r.Create(ctx, new)
 	} else if err != nil {
 		return err
@@ -90,11 +93,11 @@ func (r *MilvusReconciler) ReconcileComponentService(
 	/* if config.IsDebug() {
 		diff, err := diffObject(old, cur)
 		if err == nil {
-			r.logger.Info("Service diff", "name", cur.Name, "namespace", cur.Namespace, "diff", string(diff))
+			logger.Info("Service diff", "diff", string(diff))
 		}
 	} */
 
-	r.logger.Info("Update Service", "name", cur.Name, "namespace", cur.Namespace)
+	logger.Info("Update Service")
 	return r.Update(ctx, cur)
 }
 

@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/pkg/errors"
 
@@ -36,6 +37,8 @@ func (r *MilvusReconciler) syncUpdatePVC(ctx context.Context, namespacedName typ
 	old := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, namespacedName, old)
 
+	logger := ctrl.LoggerFrom(ctx)
+
 	if kerrors.IsNotFound(err) {
 		new := &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
@@ -44,7 +47,7 @@ func (r *MilvusReconciler) syncUpdatePVC(ctx context.Context, namespacedName typ
 			},
 		}
 		r.syncPVC(ctx, milvusPVC, new)
-		r.logger.Info("Create PersistentVolumeClaim", "name", new.Name, "namespace", new.Namespace)
+		logger.Info("Create PersistentVolumeClaim")
 		return r.Create(ctx, new)
 	}
 	if err != nil {
@@ -63,7 +66,7 @@ func (r *MilvusReconciler) syncUpdatePVC(ctx context.Context, namespacedName typ
 	if IsEqual(old, new) {
 		return nil
 	}
-	r.logger.Info("Update PVC", "name", new.Name, "namespace", new.Namespace)
+	logger.Info("Update PVC")
 	err = r.Update(ctx, new)
 	return errors.Wrap(err, "failed to update data pvc")
 }

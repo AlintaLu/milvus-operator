@@ -178,7 +178,7 @@ func TestReconciler_ReconcilePodMonitor_AddMetricLabels(t *testing.T) {
 		},
 	}
 
-	err := r.updatePodMonitor(mc, podmonitor)
+	err := r.updatePodMonitor(ctx, mc, podmonitor)
 	assert.NoError(t, err)
 
 	// Verify metrics relabeling configs

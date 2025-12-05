@@ -8,18 +8,19 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/zilliztech/milvus-operator/apis/milvus.io/v1beta1"
 	"github.com/zilliztech/milvus-operator/pkg/util"
 )
 
 func (r *MilvusReconciler) updatePodMonitor(
-	mc v1beta1.Milvus, podmonitor *monitoringv1.PodMonitor) error {
+	ctx context.Context, mc v1beta1.Milvus, podmonitor *monitoringv1.PodMonitor) error {
 
 	appLabels := NewAppLabels(mc.Name)
 	podmonitor.Labels = MergeLabels(podmonitor.Labels, appLabels)
 	if err := SetControllerReference(&mc, podmonitor, r.Scheme); err != nil {
-		r.logger.Error(err, "PodMonitor SetControllerReference error", "name", mc.Name, "namespace", mc.Namespace)
+		ctrl.LoggerFrom(ctx).Error(err, "PodMonitor SetControllerReference error")
 		return err
 	}
 
@@ -95,8 +96,9 @@ func (r *MilvusReconciler) ReconcilePodMonitor(ctx context.Context, mc v1beta1.M
 	namespacedName := NamespacedName(mc.Namespace, mc.Name)
 	old := &monitoringv1.PodMonitor{}
 	err := r.Get(ctx, namespacedName, old)
+	logger := ctrl.LoggerFrom(ctx)
 	if meta.IsNoMatchError(err) {
-		r.logger.Info("podmonitor kind no matchs, maybe is not installed")
+		logger.Info("podmonitor kind no matchs, maybe is not installed")
 		return nil
 	}
 
@@ -108,11 +110,11 @@ func (r *MilvusReconciler) ReconcilePodMonitor(ctx context.Context, mc v1beta1.M
 			},
 		}
 
-		if err := r.updatePodMonitor(mc, new); err != nil {
+		if err := r.updatePodMonitor(ctx, mc, new); err != nil {
 			return err
 		}
 
-		r.logger.Info("Create PodMonitor", "name", new.Name, "namespace", new.Namespace)
+		logger.Info("Create PodMonitor")
 		return r.Create(ctx, new)
 	}
 
@@ -121,15 +123,15 @@ func (r *MilvusReconciler) ReconcilePodMonitor(ctx context.Context, mc v1beta1.M
 	}
 
 	cur := old.DeepCopy()
-	if err := r.updatePodMonitor(mc, cur); err != nil {
+	if err := r.updatePodMonitor(ctx, mc, cur); err != nil {
 		return err
 	}
 
 	if IsEqual(old, cur) {
-		// r.logger.Info("Equal", "cur", cur.Name)
+		// logger.Info("Equal", "cur", cur.Name)
 		return nil
 	}
 
-	r.logger.Info("Update PodMonitor", "name", cur.Name, "namespace", cur.Namespace)
+	logger.Info("Update PodMonitor")
 	return r.Update(ctx, cur)
 }

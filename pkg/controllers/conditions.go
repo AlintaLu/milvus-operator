@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -17,6 +16,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/zilliztech/milvus-operator/apis/milvus.io/v1beta1"
@@ -44,8 +44,8 @@ func GetCondition(getter func() v1beta1.MilvusCondition, eps []string) v1beta1.M
 }
 
 var (
-	wrapKafkaConditonGetter = func(ctx context.Context, logger logr.Logger, p v1beta1.MilvusKafka, cfg external.CheckKafkaConfig) func() v1beta1.MilvusCondition {
-		return func() v1beta1.MilvusCondition { return GetKafkaCondition(ctx, logger, p, cfg) }
+	wrapKafkaConditonGetter = func(ctx context.Context, p v1beta1.MilvusKafka, cfg external.CheckKafkaConfig) func() v1beta1.MilvusCondition {
+		return func() v1beta1.MilvusCondition { return GetKafkaCondition(ctx, p, cfg) }
 	}
 	wrapEtcdConditionGetter = func(ctx context.Context, m *v1beta1.Milvus, endpoints []string) func() v1beta1.MilvusCondition {
 		sslEnabled, _ := util.GetBoolValue(m.Spec.Conf.Data, "etcd", "ssl", "enabled")
@@ -62,8 +62,8 @@ var (
 		}
 		return func() v1beta1.MilvusCondition { return GetEtcdCondition(ctx, authCfg, endpoints) }
 	}
-	wrapMinioConditionGetter = func(ctx context.Context, logger logr.Logger, cli client.Client, info StorageConditionInfo) func() v1beta1.MilvusCondition {
-		return func() v1beta1.MilvusCondition { return GetMinioCondition(ctx, logger, cli, info) }
+	wrapMinioConditionGetter = func(ctx context.Context, cli client.Client, info StorageConditionInfo) func() v1beta1.MilvusCondition {
+		return func() v1beta1.MilvusCondition { return GetMinioCondition(ctx, cli, info) }
 	}
 )
 
@@ -71,7 +71,7 @@ var msgStreamReadyCondition = external.MQReadyCondition
 
 var checkKafka = external.CheckKafka
 
-func GetKafkaCondition(ctx context.Context, logger logr.Logger, p v1beta1.MilvusKafka, cfg external.CheckKafkaConfig) v1beta1.MilvusCondition {
+func GetKafkaCondition(ctx context.Context, p v1beta1.MilvusKafka, cfg external.CheckKafkaConfig) v1beta1.MilvusCondition {
 	err := checkKafka(cfg)
 	if err != nil {
 		return newErrMsgStreamCondResult(v1beta1.ReasonMsgStreamNotReady, err.Error())
@@ -98,7 +98,7 @@ type checkMinIOFunc = func(args external.CheckMinIOArgs) error
 // checkMinIO wraps minio.New for test mock convenience
 var checkMinIO = external.CheckMinIO
 
-func GetMinioCondition(ctx context.Context, logger logr.Logger, cli client.Client, info StorageConditionInfo) v1beta1.MilvusCondition {
+func GetMinioCondition(ctx context.Context, cli client.Client, info StorageConditionInfo) v1beta1.MilvusCondition {
 	var accesskey, secretkey []byte
 	if !info.UseIAM {
 		secret := &corev1.Secret{}
@@ -307,12 +307,12 @@ type MilvusEndpointInfo struct {
 	Port        int32
 }
 
-func GetMilvusEndpoint(ctx context.Context, logger logr.Logger, client client.Client, info MilvusEndpointInfo) string {
+func GetMilvusEndpoint(ctx context.Context, client client.Client, info MilvusEndpointInfo) string {
 	if info.ServiceType == corev1.ServiceTypeLoadBalancer {
 		proxy := &corev1.Service{}
 		key := NamespacedName(info.Namespace, GetServiceInstanceName(info.Name))
 		if err := client.Get(ctx, key, proxy); err != nil {
-			logger.Error(err, "Get Milvus endpoint error")
+			ctrl.LoggerFrom(ctx).Error(err, "Get Milvus endpoint error")
 			return ""
 		}
 

@@ -29,8 +29,6 @@ type DeployControllerImpl struct {
 	rollingModeStatusUpdater RollingModeStatusUpdater
 }
 
-var deployCtrlLogger = ctrl.Log.WithName("deploy-ctrl")
-
 // NewDeployController returns a DeployController
 func NewDeployController(
 	bizFactory DeployControllerBizFactory,
@@ -44,7 +42,7 @@ func NewDeployController(
 }
 
 func (c *DeployControllerImpl) Reconcile(ctx context.Context, mc v1beta1.Milvus, component MilvusComponent) error {
-	logger := deployCtrlLogger.WithValues("milvus", mc.Name, "component", component.Name)
+	logger := ctrl.LoggerFrom(ctx).WithName("deploy-ctrl")
 	ctx = ctrl.LoggerInto(ctx, logger)
 	err := c.rollingModeStatusUpdater.Update(ctx, &mc)
 	if err != nil {
@@ -90,7 +88,7 @@ func (c *DeployControllerImpl) Reconcile(ctx context.Context, mc v1beta1.Milvus,
 	// is already in two deployment mode
 	err = biz.HandleCreate(ctx, mc)
 	if err != nil {
-		return errors.Wrap(err, "handle create")
+		return errors.Wrapf(err, "handle create for component %s", component.Name)
 	}
 
 	if biz.IsPaused(ctx, mc) {
@@ -107,12 +105,12 @@ func (c *DeployControllerImpl) Reconcile(ctx context.Context, mc v1beta1.Milvus,
 
 	err = biz.HandleRolling(ctx, mc)
 	if err != nil {
-		return errors.Wrap(err, "handle rolling")
+		return errors.Wrapf(err, "handle rolling for component %s", component.Name)
 	}
 
 	err = biz.HandleScaling(ctx, mc)
 	if err != nil {
-		return errors.Wrap(err, "handle scaling")
+		return errors.Wrapf(err, "handle scaling for component %s", component.Name)
 	}
 
 	return nil

@@ -309,7 +309,7 @@ func (r *MilvusStatusSyncer) UpdateStatusForNewGeneration(ctx context.Context, m
 		return nil
 	}
 
-	r.logger.Info("update status", "diff", util.DiffStr(beginStatus, &mc.Status))
+	ctrl.LoggerFrom(ctx).Info("update status", "diff", util.DiffStr(beginStatus, &mc.Status))
 	return r.Status().Update(ctx, mc)
 }
 
@@ -379,7 +379,7 @@ func (r *MilvusStatusSyncer) GetMilvusEndpoint(ctx context.Context, mc v1beta1.M
 		ServiceType: mc.Spec.GetServiceComponent().ServiceType,
 		Port:        MilvusPort,
 	}
-	return GetMilvusEndpoint(ctx, r.logger, r.Client, info)
+	return GetMilvusEndpoint(ctx, r.Client, info)
 }
 
 // GetKafkaConfFromCR get kafka config from CR
@@ -417,7 +417,7 @@ func (r *MilvusStatusSyncer) GetMsgStreamCondition(
 			}, nil
 		}
 		kafkaConf.BrokerList = mc.Spec.Dep.Kafka.BrokerList
-		getter = wrapKafkaConditonGetter(ctx, r.logger, mc.Spec.Dep.Kafka, *kafkaConf)
+		getter = wrapKafkaConditonGetter(ctx, mc.Spec.Dep.Kafka, *kafkaConf)
 		eps = mc.Spec.Dep.Kafka.BrokerList
 	default:
 		// default built-in mqs, assume ok
@@ -439,7 +439,7 @@ func (r *MilvusStatusSyncer) GetMinioCondition(
 		StorageAccount: GetAzureStorageAccount(mc.Spec.Conf.Data),
 		UseVirtualHost: ShouldUseVirtualHost(mc.Spec.Conf.Data),
 	}
-	getter := wrapMinioConditionGetter(ctx, r.logger, r.Client, info)
+	getter := wrapMinioConditionGetter(ctx, r.Client, info)
 	return GetCondition(getter, []string{mc.Spec.Dep.Storage.Endpoint}), nil
 }
 

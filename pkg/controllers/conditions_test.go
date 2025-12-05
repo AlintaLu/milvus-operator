@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	fake "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/zilliztech/milvus-operator/apis/milvus.io/v1beta1"
 	"github.com/zilliztech/milvus-operator/pkg/external"
@@ -68,9 +67,8 @@ func TestGetCondition(t *testing.T) {
 
 func TestWrapGetters(t *testing.T) {
 	ctx := context.TODO()
-	logger := logf.Log
 	t.Run("kafka", func(t *testing.T) {
-		fn := wrapKafkaConditonGetter(ctx, logger, v1beta1.MilvusKafka{}, external.CheckKafkaConfig{})
+		fn := wrapKafkaConditonGetter(ctx, v1beta1.MilvusKafka{}, external.CheckKafkaConfig{})
 		fn()
 	})
 	t.Run("etcd", func(t *testing.T) {
@@ -81,18 +79,18 @@ func TestWrapGetters(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		cli := NewMockK8sClient(ctrl)
 		cli.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		fn := wrapMinioConditionGetter(ctx, logger, cli, StorageConditionInfo{})
+		fn := wrapMinioConditionGetter(ctx, cli, StorageConditionInfo{})
 		fn()
 	})
 }
 
 func TestGetKafkaCondition(t *testing.T) {
 	checkKafka = func(external.CheckKafkaConfig) error { return nil }
-	ret := GetKafkaCondition(context.TODO(), logf.Log.WithName("test"), v1beta1.MilvusKafka{}, external.CheckKafkaConfig{})
+	ret := GetKafkaCondition(context.TODO(), v1beta1.MilvusKafka{}, external.CheckKafkaConfig{})
 	assert.Equal(t, corev1.ConditionTrue, ret.Status)
 
 	checkKafka = func(external.CheckKafkaConfig) error { return errors.New("failed") }
-	ret = GetKafkaCondition(context.TODO(), logf.Log.WithName("test"), v1beta1.MilvusKafka{}, external.CheckKafkaConfig{})
+	ret = GetKafkaCondition(context.TODO(), v1beta1.MilvusKafka{}, external.CheckKafkaConfig{})
 	assert.Equal(t, corev1.ConditionFalse, ret.Status)
 }
 
@@ -107,21 +105,20 @@ func TestGetMinioCondition(t *testing.T) {
 	defer ctrl.Finish()
 
 	ctx := context.TODO()
-	logger := logf.Log.WithName("test")
 	mockK8sCli := NewMockK8sClient(ctrl)
 	errTest := errors.New("test")
 	errNotFound := k8sErrors.NewNotFound(schema.GroupResource{}, "")
 
 	t.Run(`iam not get secret`, func(t *testing.T) {
 		defer ctrl.Finish()
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{UseIAM: true})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{UseIAM: true})
 		assert.Equal(t, v1beta1.ReasonClientErr, ret.Reason)
 	})
 
 	t.Run(`get secret failed`, func(t *testing.T) {
 		defer ctrl.Finish()
 		mockK8sCli.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errTest)
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{})
 		assert.Equal(t, v1beta1.ReasonClientErr, ret.Reason)
 		assert.Equal(t, errTest.Error(), ret.Message)
 	})
@@ -129,7 +126,7 @@ func TestGetMinioCondition(t *testing.T) {
 	t.Run(`secret not found`, func(t *testing.T) {
 		defer ctrl.Finish()
 		mockK8sCli.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errNotFound)
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{})
 		assert.Equal(t, corev1.ConditionFalse, ret.Status)
 		assert.Equal(t, v1beta1.ReasonSecretNotExist, ret.Reason)
 	})
@@ -137,7 +134,7 @@ func TestGetMinioCondition(t *testing.T) {
 	t.Run(`secrets keys not found`, func(t *testing.T) {
 		defer ctrl.Finish()
 		mockK8sCli.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{})
 		assert.Equal(t, corev1.ConditionFalse, ret.Status)
 		assert.Equal(t, v1beta1.ReasonSecretNotExist, ret.Reason)
 	})
@@ -153,7 +150,7 @@ func TestGetMinioCondition(t *testing.T) {
 					SecretKey: []byte("secretAccessKey"),
 				}
 			})
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{})
 		assert.Equal(t, corev1.ConditionFalse, ret.Status)
 		assert.Equal(t, v1beta1.ReasonClientErr, ret.Reason)
 
@@ -169,7 +166,7 @@ func TestGetMinioCondition(t *testing.T) {
 					SecretKey: []byte("secretAccessKey"),
 				}
 			})
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{})
 		assert.Equal(t, corev1.ConditionTrue, ret.Status)
 	})
 
@@ -184,7 +181,7 @@ func TestGetMinioCondition(t *testing.T) {
 					SecretKey: []byte("secretAccessKey"),
 				}
 			})
-		ret := GetMinioCondition(ctx, logger, mockK8sCli, StorageConditionInfo{})
+		ret := GetMinioCondition(ctx, mockK8sCli, StorageConditionInfo{})
 		assert.Equal(t, corev1.ConditionTrue, ret.Status)
 		assert.Equal(t, v1beta1.ReasonStorageReady, ret.Reason)
 	})
@@ -255,7 +252,6 @@ func TestGetMilvusEndpoint(t *testing.T) {
 	defer ctrl.Finish()
 	fakeClient := fake.NewClientBuilder().Build()
 	ctx := context.TODO()
-	logger := logf.Log.WithName("test")
 
 	// nodePort empty return
 	info := MilvusEndpointInfo{
@@ -264,15 +260,15 @@ func TestGetMilvusEndpoint(t *testing.T) {
 		ServiceType: corev1.ServiceTypeNodePort,
 		Port:        10086,
 	}
-	assert.Empty(t, GetMilvusEndpoint(ctx, logger, fakeClient, info))
+	assert.Empty(t, GetMilvusEndpoint(ctx, fakeClient, info))
 
 	// clusterIP
 	info.ServiceType = corev1.ServiceTypeClusterIP
-	assert.Equal(t, "name-milvus.ns:10086", GetMilvusEndpoint(ctx, logger, fakeClient, info))
+	assert.Equal(t, "name-milvus.ns:10086", GetMilvusEndpoint(ctx, fakeClient, info))
 
 	// query loadbalancer failed
 	info.ServiceType = corev1.ServiceTypeLoadBalancer
-	assert.Empty(t, GetMilvusEndpoint(ctx, logger, fakeClient, info))
+	assert.Empty(t, GetMilvusEndpoint(ctx, fakeClient, info))
 
 	// svc loadbalancer not created, empty
 	info.ServiceType = corev1.ServiceTypeLoadBalancer
@@ -281,7 +277,7 @@ func TestGetMilvusEndpoint(t *testing.T) {
 	svc.Namespace = "ns"
 	fakeClient = fake.NewClientBuilder().
 		WithObjects(svc).Build()
-	assert.Empty(t, GetMilvusEndpoint(ctx, logger, fakeClient, info))
+	assert.Empty(t, GetMilvusEndpoint(ctx, fakeClient, info))
 
 	// loadbalancer
 	info.ServiceType = corev1.ServiceTypeLoadBalancer
@@ -290,7 +286,7 @@ func TestGetMilvusEndpoint(t *testing.T) {
 	}
 	fakeClient = fake.NewClientBuilder().
 		WithObjects(svc).Build()
-	assert.Equal(t, "1.1.1.1:10086", GetMilvusEndpoint(ctx, logger, fakeClient, info))
+	assert.Equal(t, "1.1.1.1:10086", GetMilvusEndpoint(ctx, fakeClient, info))
 
 }
 

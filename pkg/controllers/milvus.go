@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/zilliztech/milvus-operator/apis/milvus.io/v1beta1"
@@ -88,7 +89,7 @@ func (r *MilvusReconciler) batchDeletePVC(ctx context.Context, namespace, labelK
 		if err := r.Delete(ctx, &pvc); err != nil {
 			return errors.Wrapf(err, "delete pvc %s/%s failed", namespace, pvc.Name)
 		} else {
-			r.logger.Info("pvc deleted", "name", pvc.Name, "namespace", pvc.Namespace)
+			ctrl.LoggerFrom(ctx).Info("pvc deleted")
 		}
 	}
 	return nil
@@ -124,7 +125,7 @@ var Finalize = func(ctx context.Context, r *MilvusReconciler, mc v1beta1.Milvus)
 			if err := r.Delete(ctx, pvc); err != nil && !kerrors.IsNotFound(err) {
 				return errors.Wrap(err, "delete data pvc failed")
 			} else {
-				r.logger.Info("pvc deleted", "name", pvc.Name, "namespace", pvc.Namespace)
+				ctrl.LoggerFrom(ctx).Info("pvc deleted")
 			}
 		}
 	}
@@ -138,7 +139,7 @@ var Finalize = func(ctx context.Context, r *MilvusReconciler, mc v1beta1.Milvus)
 	}
 
 	if len(deletingReleases) > 0 {
-		cfg := r.helmReconciler.NewHelmCfg(mc.Namespace)
+		cfg := r.helmReconciler.NewHelmCfg(ctx, mc.Namespace)
 
 		errs := []error{}
 		for releaseName, deletePVC := range deletingReleases {
