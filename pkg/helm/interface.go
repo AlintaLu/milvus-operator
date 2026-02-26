@@ -11,6 +11,7 @@ import (
 type Client interface {
 	GetStatus(cfg *action.Configuration, releaseName string) (release.Status, error)
 	GetValues(cfg *action.Configuration, releaseName string) (map[string]interface{}, error)
+	GetChartMetadata(cfg *action.Configuration, releaseName string) (chartName string, chartVersion string, err error)
 	ReleaseExist(cfg *action.Configuration, releaseName string) (bool, error)
 	Upgrade(cfg *action.Configuration, request ChartRequest) error
 	Update(cfg *action.Configuration, request ChartRequest) error
@@ -32,6 +33,10 @@ func GetStatus(cfg *action.Configuration, releaseName string) (release.Status, e
 
 func GetValues(cfg *action.Configuration, releaseName string) (map[string]interface{}, error) {
 	return defaultClient.GetValues(cfg, releaseName)
+}
+
+func GetChartMetadata(cfg *action.Configuration, releaseName string) (chartName string, chartVersion string, err error) {
+	return defaultClient.GetChartMetadata(cfg, releaseName)
 }
 
 func ReleaseExist(cfg *action.Configuration, releaseName string) (bool, error) {

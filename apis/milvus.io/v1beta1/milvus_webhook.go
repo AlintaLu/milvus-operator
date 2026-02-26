@@ -419,6 +419,12 @@ func (r *Milvus) defaultEtcd() {
 			}
 		}
 
+		if r.Spec.Dep.Etcd.InCluster.ChartVersion == "" {
+			if r.IsFirstTimeStarting() {
+				r.Spec.Dep.Etcd.InCluster.ChartVersion = "etcd-v8"
+			}
+		}
+
 		r.defaultValuesByDependency(values.DependencyKindEtcd)
 		if r.Spec.Dep.Etcd.InCluster.DeletionPolicy == "" {
 			r.Spec.Dep.Etcd.InCluster.DeletionPolicy = DeletionPolicyRetain

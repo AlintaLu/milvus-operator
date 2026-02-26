@@ -53,6 +53,19 @@ func (d *LocalClient) GetValues(cfg *action.Configuration, releaseName string) (
 	return vals, nil
 }
 
+// GetChartMetadata returns the chart name and version from a helm release
+func (d *LocalClient) GetChartMetadata(cfg *action.Configuration, releaseName string) (chartName string, chartVersion string, err error) {
+	client := action.NewStatus(cfg)
+	vals, err := client.Run(releaseName)
+	if err != nil {
+		return "", "", err
+	}
+	if vals.Chart != nil && vals.Chart.Metadata != nil {
+		return vals.Chart.Metadata.Name, vals.Chart.Metadata.Version, nil
+	}
+	return "", "", nil
+}
+
 func (d *LocalClient) ReleaseExist(cfg *action.Configuration, releaseName string) (bool, error) {
 	histClient := action.NewHistory(cfg)
 	histClient.Max = 1
@@ -137,6 +150,10 @@ func GetChartRequest(mc v1beta1.Milvus, dep values.DependencyKind, chart string)
 	if inCluster.ChartVersion == values.ChartVersionPulsarV3 {
 		chart = values.PulsarV3
 		chartKind = values.Pulsar
+	}
+	if inCluster.ChartVersion == values.ChartVersionEtcdV8 {
+		chart = values.EtcdV8
+		chartKind = values.Etcd
 	}
 	return ChartRequest{
 		ReleaseName: mc.Name + "-" + chartKind,

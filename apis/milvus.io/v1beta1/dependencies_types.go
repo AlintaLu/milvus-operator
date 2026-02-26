@@ -98,12 +98,13 @@ type InClusterConfig struct {
 	// +nullable
 	Values Values `json:"values,omitempty"`
 
-	// ChartVersion is the pulsar chart version to be installed
-	// For now only pulsar uses this field
-	// pulsar-v2 (v2.7.8) & pulsar-v3 (v3.3.0) can be used
-	// after v1.2.0, pulsar-v3 is used for new milvus
-	// note it's the version of chart, not pulsar
-	// pulsar v2.x should use pulsar-v2 chart, & pulsar v3.x should use pulsar-v3 chart
+	// ChartVersion specifies the Helm chart version to install
+	// Currently only used by pulsar and etcd dependencies.
+	// Available options:
+	//   - pulsar-v2 (Pulsar v2.7.8) and pulsar-v3 (Pulsar v3.3.0)
+	//   - etcd-v6 (etcd v6.3.3) and etcd-v8 (etcd v8.12.0)
+	// Defaults: pulsar-v3 for new Milvus installations after v1.2.0; etcd-v8 for new Milvus installations after v1.3.3.
+	// Note: Pulsar v2.x requires pulsar-v2 chart, Pulsar v3.x requires pulsar-v3 chart.
 	// +kubebuilder:validation:Optional
 	ChartVersion values.ChartVersion `json:"chartVersion,omitempty"`
 
@@ -121,6 +122,8 @@ type ChartVersion string
 const (
 	ChartVersionPulsarV2 ChartVersion = "pulsar-v2"
 	ChartVersionPulsarV3 ChartVersion = "pulsar-v3"
+	ChartVersionEtcdV6   ChartVersion = "etcd-v6"
+	ChartVersionEtcdV8   ChartVersion = "etcd-v8"
 )
 
 type MilvusStorage struct {

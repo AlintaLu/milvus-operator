@@ -32,6 +32,7 @@ func TestMilvus_Default_NotExternal(t *testing.T) {
 	pulsarDefaultInClusterConfig.ChartVersion = "pulsar-v3"
 
 	etcdStandaloneDefaultInClusterConfig := defaultInClusterConfig.DeepCopy()
+	etcdStandaloneDefaultInClusterConfig.ChartVersion = "etcd-v8"
 	etcdStandaloneDefaultInClusterConfig.Values.Data["replicaCount"] = int64(1)
 	minioStandAloneDefaultInClusterConfig := defaultInClusterConfig.DeepCopy()
 	minioStandAloneDefaultInClusterConfig.Values.Data["mode"] = "standalone"

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-logr/logr"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
@@ -443,9 +444,63 @@ func (r *MilvusReconciler) ReconcileEtcd(ctx context.Context, mc v1beta1.Milvus)
 	if mc.Spec.Dep.Etcd.External {
 		return nil
 	}
+
+	if mc.Spec.Dep.Etcd.InCluster == nil {
+		return fmt.Errorf("etcd in cluster config is nil")
+	}
+	// Detect and fill etcd chartVersion if not set
+	if mc.Spec.Dep.Etcd.InCluster.ChartVersion == "" {
+		if err := r.detectAndFillEtcdChartVersion(ctx, &mc); err != nil {
+			return fmt.Errorf("failed to detect and fill etcd chart version: %w", err)
+		}
+	}
+
 	request := helm.GetChartRequest(mc, values.DependencyKindEtcd, Etcd)
 
 	return r.helmReconciler.Reconcile(ctx, request, mc)
+}
+
+// detectAndFillEtcdChartVersion detects the actual etcd chart version from helm release
+// and fills it into the CR spec. Returns error if detection or update fails.
+func (r *MilvusReconciler) detectAndFillEtcdChartVersion(ctx context.Context, mc *v1beta1.Milvus) error {
+	releaseName := mc.Name + "-etcd"
+	cfg := r.helmReconciler.NewHelmCfg(mc.Namespace)
+
+	exist, err := helm.ReleaseExist(cfg, releaseName)
+	if err != nil {
+		return err
+	}
+	if !exist {
+		return fmt.Errorf("helm release %s does not exist in namespace %s", releaseName, mc.Namespace)
+	}
+
+	_, chartVer, err := helm.GetChartMetadata(cfg, releaseName)
+	if err != nil {
+		return err
+	}
+
+	// Determine chartVersion based on chart version string
+	// e.g., "8.12.0" -> etcd-v8, "6.3.3" -> etcd-v6
+	var chartVersion values.ChartVersion
+	semVer, err := semver.ParseTolerant(chartVer)
+	if err != nil {
+		return fmt.Errorf("failed to parse chart version: %v", err)
+	}
+	if semVer.Major == 8 {
+		chartVersion = values.ChartVersionEtcdV8
+	} else if semVer.Major == 6 {
+		chartVersion = values.ChartVersionEtcdV6
+	} else {
+		return fmt.Errorf("unsupported etcd chart version: %s", chartVer)
+	}
+
+	mc.Spec.Dep.Etcd.InCluster.ChartVersion = chartVersion
+	if err := r.Update(ctx, mc); err != nil {
+		return fmt.Errorf("failed to update CR with chart version: %w", err)
+	}
+
+	ctrl.LoggerFrom(ctx).Info("etcd chart version detected and filled", "chartVersion", mc.Spec.Dep.Etcd.InCluster.ChartVersion)
+	return nil
 }
 
 func (r *MilvusReconciler) ReconcileMsgStream(ctx context.Context, mc v1beta1.Milvus) error {

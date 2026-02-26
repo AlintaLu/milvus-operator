@@ -15,6 +15,8 @@ type ChartVersion string
 const (
 	ChartVersionPulsarV2 ChartVersion = "pulsar-v2"
 	ChartVersionPulsarV3 ChartVersion = "pulsar-v3"
+	ChartVersionEtcdV6   ChartVersion = "etcd-v6"
+	ChartVersionEtcdV8   ChartVersion = "etcd-v8"
 )
 
 const (
@@ -31,6 +33,9 @@ const (
 	PulsarV3 = "pulsarv3"
 	Kafka    = "kafka"
 	Tei      = "tei"
+
+	// chart names, values sub-fields are the same as `etcd` in milvus-helm
+	EtcdV8 = "etcdv8"
 )
 
 const (
@@ -79,7 +84,7 @@ func MustInitDefaultValuesProvider() {
 
 func (d DefaultValuesProviderImpl) GetDefaultValues(dependencyName DependencyKind, chartVersion ChartVersion) map[string]interface{} {
 	switch dependencyName {
-	case DependencyKindEtcd:
+	case DependencyKindEtcd: // Note that etcdv8 shares same default values as etcd
 		return d.chartDefaultValues[Etcd]
 	case DependencyKindStorage:
 		return d.chartDefaultValues[Minio]
